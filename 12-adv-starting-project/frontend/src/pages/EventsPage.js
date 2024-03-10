@@ -1,23 +1,39 @@
-import { Link } from "react-router-dom";
-
-const DUMMY_EVNETS = [
-  { id: "e1", title: "Some event" },
-  { id: "e2", title: "Another evnet" },
-];
+import { Suspense } from "react";
+import { json, useLoaderData, defer, Await } from "react-router-dom";
+import EventsList from "../components/EventsList";
 
 function EventsPage() {
+  const { events } = useLoaderData();
+
   return (
-    <>
-      <h1>EventsPage</h1>
-      <ul>
-        {DUMMY_EVNETS.map((event) => (
-          <li key={event.id}>
-            <Link to={`${event.id}`}>{event.title}</Link>
-          </li>
-        ))}
-      </ul>
-    </>
+    <Suspense fallback={<p style={{ textAlign: "center" }}>Loading... </p>}>
+      <Await resolve={events}>
+        {(loadEvents) => <EventsList events={loadEvents}></EventsList>}
+      </Await>
+    </Suspense>
   );
 }
 
 export default EventsPage;
+
+async function loadEvents() {
+  const response = await fetch("http://localhost:8080/events");
+
+  if (!response.ok) {
+    throw json({ message: "Could not fetch events." }, { status: 500 });
+
+    // new Response(JSON.stringify({ message: "Could not fetch events." }), {
+    //   status: 500,
+    // });
+    //....
+  } else {
+    const resData = await response.json();
+    return resData.events;
+  }
+}
+
+export function loader() {
+  return defer({
+    events: loadEvents(),
+  });
+}
